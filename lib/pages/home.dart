@@ -9,7 +9,7 @@ import 'package:audio_monitor/pages/source.dart';
 import 'package:audio_monitor/store/actions/record_status_action.dart';
 import 'package:audio_monitor/store/actions/result_action.dart';
 import 'package:audio_monitor/widgets/bottombar.dart';
-import 'package:audio_monitor/widgets/start_rec_btn.dart';
+// import 'package:audio_monitor/widgets/start_rec_btn.dart';
 import 'package:audio_monitor/widgets/stop_rec_back_btn.dart';
 import 'package:audio_monitor/widgets/stop_rec_btn.dart';
 import 'package:audio_monitor/widgets/toaster_message.dart';
@@ -68,6 +68,7 @@ class _HomeState extends State<Home> {
 
 	void onInit(store) async {
 		await askPermissions();
+    
 		// await ACRCloud.setUp(const ACRCloudConfig(accessKey, accessSecret, host));
 	}
 
@@ -412,7 +413,8 @@ class _HomeState extends State<Home> {
 																	),
 																),
 																const SizedBox(height: 100,),
-																!state.recordStatus.isRunning ? StartRecBtn(onRecord: startRecord,) : state.recordStatus.isBackground ? StopRecBackBtn(onStop: stopRecordBackground,) : StopRecBtn(onStop: stopRecord,),
+//																!state.recordStatus.isRunning ? StartRecBtn(onRecord: startRecord,) : state.recordStatus.isBackground ? StopRecBackBtn(onStop: stopRecordBackground,) : StopRecBtn(onStop: stopRecord,),
+                                !state.recordStatus.isRunning ? Container(width: 130, height: 130,) : state.recordStatus.isBackground ? StopRecBackBtn(onStop: stopRecordBackground,) : StopRecBtn(onStop: stopRecord,),
 																const SizedBox(height: 15,),
 																(state.recordStatus.isRunning && !state.recordStatus.isBackground && _session != null) ? StreamBuilder(
 																	stream: _session.volumeStream,
@@ -520,6 +522,7 @@ class AudioMonitorTaskHandler extends TaskHandler {
 		_sendPort = sendPort;
 		_currentAppChannel = const MethodChannel('RunningApp');
 		await askPermissions();
+    await requestPhonePermission();
 		setStream();
 		_userId = await FlutterForegroundTask.getData<int>(key: 'user_id') ?? 0;
 		_uuid = await FlutterForegroundTask.getData<String>(key: 'uuid') ?? '';
@@ -648,7 +651,20 @@ class AudioMonitorTaskHandler extends TaskHandler {
 			}
 		});
 	}
+  Future<bool> requestPhonePermission() async {
+		var status = await Permission.phone.request();
 
+		switch (status) {
+			case PermissionStatus.denied:
+			case PermissionStatus.restricted:
+			case PermissionStatus.limited:
+			case PermissionStatus.permanentlyDenied:
+				return false;
+			case PermissionStatus.provisional:
+			case PermissionStatus.granted:
+				return true;
+		}
+	}
 	Future<bool> _handleLocationPermission() async {
 		bool serviceEnabled;
 		LocationPermission permission;
