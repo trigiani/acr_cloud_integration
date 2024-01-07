@@ -161,8 +161,8 @@ class _HomeState extends State<Home> {
 				channelId: 'foreground_service',
 				channelName: 'Foreground Service Notification',
 				channelDescription: 'This notification appears when the foreground service is running.',
-				channelImportance: NotificationChannelImportance.HIGH,
-				priority: NotificationPriority.HIGH,
+				channelImportance: NotificationChannelImportance.LOW,
+				priority: NotificationPriority.LOW,
 				iconData: const NotificationIconData(
 					resType: ResourceType.mipmap,
 					resPrefix: ResourcePrefix.ic,
@@ -522,8 +522,7 @@ class AudioMonitorTaskHandler extends TaskHandler {
 		_sendPort = sendPort;
 		_currentAppChannel = const MethodChannel('RunningApp');
 		await askPermissions();
-    await requestPhonePermission();
-		setStream();
+ 		setStream();
 		_userId = await FlutterForegroundTask.getData<int>(key: 'user_id') ?? 0;
 		_uuid = await FlutterForegroundTask.getData<String>(key: 'uuid') ?? '';
 		_imei = await FlutterForegroundTask.getData<String>(key: 'imei') ?? '';
@@ -532,8 +531,11 @@ class AudioMonitorTaskHandler extends TaskHandler {
 		_longitude = await FlutterForegroundTask.getData<String>(key: 'longitude') ?? '';
 		_latitude = await FlutterForegroundTask.getData<String>(key: 'latitude') ?? '';
 		_locationAddress = await FlutterForegroundTask.getData<String>(key: 'locationAddress') ?? '';
-	}
+    await requestPhonePermission();   
+  // requestPhonePermission cause an issue on sending user data
 
+	}
+          
 	@override
 	void onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {
 		print('onRepeatEvent');
@@ -542,6 +544,13 @@ class AudioMonitorTaskHandler extends TaskHandler {
 		await ACRCloud.setUp(const ACRCloudConfig(accessKey, accessSecret, host));
 		_session = ACRCloud.startSession();
 		_acrResult = await _session.result;
+    var errorStatus = 0;
+    if (_acrResult.status.code == 2004) {        
+      //problem with fp generation ACR on Android 
+       print("TRY TO FIX PROBLEM AFTER CALL");          
+       FlutterForegroundTask.stopService();
+       errorStatus = 1;        
+    }
 		String result = '';
 		if (_eventCount % 5 == 0) {
 			print('get location');
@@ -577,7 +586,12 @@ class AudioMonitorTaskHandler extends TaskHandler {
 		// 	print('Error: ${e.message}');
 		// }
 		
-		if (result != '') sendResult(result);
+		if ((result != '')&&(errorStatus == 0)) sendResult(result);
+    if (errorStatus == 1)    {
+        print ("RESTART SERVICE!");
+         await FlutterForegroundTask.restartService();
+
+    } 
 		sendPort?.send(_eventCount);
 		_eventCount ++;
 	}
